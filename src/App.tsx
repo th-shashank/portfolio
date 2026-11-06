@@ -21,16 +21,55 @@ export default function App() {
     return () => { alive = false; };
   }, []);
 
-  useEffect(() => {
-    if (!supabase) return;
-    const channel = supabase
-      .channel('portfolio-live-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_content' }, () => {
-        loadPortfolio().then(setPortfolio).catch(() => setLoadError('Live portfolio refresh failed. Reload the page to try again.'));
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, []);
+
+useEffect(() => {
+  const client = supabase;
+
+  if (!client) return;
+
+  let alive = true;
+
+  const channel = client
+    .channel('portfolio-live-updates')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'portfolio_content',
+      },
+      () => {
+        loadPortfolio()
+          .then((data) => {
+            if (!alive) return;
+
+            setPortfolio(data);
+            setLoadError('');
+          })
+          .catch(() => {
+            if (!alive) return;
+
+            setLoadError(
+              'Live portfolio refresh failed. Reload the page to try again.'
+            );
+          });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    alive = false;
+    void client.removeChannel(channel);
+  };
+}, []);
+
+
+  // Cleanup subscription when component unmounts
+  return () => {
+    void client.removeChannel(channel);
+  };
+}, []);
+
 
   const refresh = async () => setPortfolio(await loadPortfolio());
 
