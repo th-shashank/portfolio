@@ -1,0 +1,47 @@
+import type { PortfolioData } from './types';
+
+export const defaultPortfolio: PortfolioData = {
+  profile: {
+    name: 'Shashank Kumar',
+    headline: 'AI & Machine Learning Student',
+    tagline: 'Aspiring Data Analyst & Data Scientist',
+    about: 'I am a B.Sc. student focused on Artificial Intelligence and Machine Learning. I enjoy building with Python, exploring data, and learning how intelligent systems work. I am currently strengthening my foundations through coursework and hands-on projects.',
+    location: 'Hazaribagh, Jharkhand, India',
+    degree: 'B.Sc. — Artificial Intelligence & Machine Learning',
+    college: 'University College of Engineering and Technology (UCET), Vinoba Bhave University',
+    focus: 'Data Analytics · Machine Learning · Python Development',
+    email: '',
+    phone: '',
+    photoUrl: '',
+    resumeUrl: '',
+    linkedinUrl: 'https://www.linkedin.com/in/shashankkr005',
+    githubUrl: '',
+  },
+  skills: [
+    { id: 's-python', name: 'Python', category: 'Programming' },
+    { id: 's-cpp', name: 'C++', category: 'Programming' },
+    { id: 's-pandas', name: 'Pandas', category: 'Data & ML' },
+    { id: 's-numpy', name: 'NumPy', category: 'Data & ML' },
+    { id: 's-sklearn', name: 'Scikit-learn', category: 'Data & ML' },
+    { id: 's-git', name: 'Git & GitHub', category: 'Tools' },
+    { id: 's-vscode', name: 'VS Code', category: 'Tools' },
+  ],
+  projects: [
+    {
+      id: 'project-smartbot',
+      title: 'SmartBot — Python CLI Chatbot',
+      summary: 'A command-line chatbot with conversational replies, date and time utilities, and fuzzy matching.',
+      description: 'An evolving Python college project focused on making a useful CLI chatbot. Current work includes response handling, regular-expression sentence patterns, fuzzy matching, and simple Hindi/Hinglish interactions.',
+      tech: ['Python', 'Regex', 'Colorama'],
+      githubUrl: '',
+      liveUrl: '',
+      imageUrl: '',
+      status: 'In progress',
+      featured: true,
+    },
+  ],
+  experience: [],
+  certificates: [],
+  achievements: [],
+  linkedinIdentity: null,
+};
