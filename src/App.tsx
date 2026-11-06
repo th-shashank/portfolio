@@ -23,46 +23,19 @@ export default function App() {
 
 
 useEffect(() => {
+  // Store the Supabase client locally
   const client = supabase;
 
+  // Stop if Supabase is not configured
   if (!client) return;
 
-  let alive = true;
-
-  const channel = client
-    .channel('portfolio-live-updates')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'portfolio_content',
-      },
-      () => {
-        loadPortfolio()
-          .then((data) => {
-            if (!alive) return;
-
-            setPortfolio(data);
-            setLoadError('');
-          })
-          .catch(() => {
-            if (!alive) return;
-
-            setLoadError(
-              'Live portfolio refresh failed. Reload the page to try again.'
-            );
-          });
-      }
-    )
+  const channel = client.channel('portfolio-live-updates').on('postgres_changes',{event: '*',schema: 'public',table: 'portfolio_content',},() => {
+      loadPortfolio().then((data) => {setPortfolio(data);setLoadError('');}).catch(() => {
+        setLoadError('Live portfolio refresh failed. Reload the page to try again.');
+      });
+    }
+  )
     .subscribe();
-
-  return () => {
-    alive = false;
-    void client.removeChannel(channel);
-  };
-}, []);
-
 
   // Cleanup subscription when component unmounts
   return () => {
