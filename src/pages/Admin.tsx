@@ -63,28 +63,76 @@ export default function Admin({ data, onSaved, loading }: { data: PortfolioData;
   useEffect(() => setLinkedinIdentity(data.linkedinIdentity ?? null), [data.linkedinIdentity]);
 
   useEffect(() => {
-    if (!supabase) { setAuthChecking(false); return; }
+    // Keep a local reference so TypeScript can safely narrow the nullable client.
+    const client = supabase;
+
+    if (!client) {
+      setAuthChecking(false);
+      return;
+    }
+
     let alive = true;
-    supabase.auth.getSession().then(async ({ data: sessionData }) => {
+
+    client.auth.getSession().then(async ({ data: sessionData }) => {
       if (!alive) return;
+
       const user = sessionData.session?.user;
-      if (!user) { setLoggedIn(false); setAuthChecking(false); return; }
+      if (!user) {
+        setLoggedIn(false);
+        setAuthChecking(false);
+        return;
+      }
+
       setUserEmail(user.email ?? '');
-      const { data: adminRow, error: adminError } = await supabase.from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle();
+
+      const { data: adminRow, error: adminError } = await client
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
       if (!alive) return;
-      if (adminError) setError(`Could not verify admin access: ${adminError.message}`);
+
+      if (adminError) {
+        setError(`Could not verify admin access: ${adminError.message}`);
+      }
+
       setLoggedIn(Boolean(adminRow));
       setAuthChecking(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user;
-      if (!user) { setLoggedIn(false); setUserEmail(''); return; }
-      setUserEmail(user.email ?? '');
-      const { data: adminRow } = await supabase.from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle();
-      setLoggedIn(Boolean(adminRow));
-      if (!adminRow) setError('You are signed in, but this account is not on the portfolio admin allowlist.');
-    });
-    return () => { alive = false; listener.subscription.unsubscribe(); };
+
+    const { data: listener } = client.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!alive) return;
+
+        const user = session?.user;
+        if (!user) {
+          setLoggedIn(false);
+          setUserEmail('');
+          return;
+        }
+
+        setUserEmail(user.email ?? '');
+
+        const { data: adminRow } = await client
+          .from('admin_users')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!alive) return;
+
+        setLoggedIn(Boolean(adminRow));
+        if (!adminRow) {
+          setError('You are signed in, but this account is not on the portfolio admin allowlist.');
+        }
+      }
+    );
+
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -130,8 +178,23 @@ export default function Admin({ data, onSaved, loading }: { data: PortfolioData;
     } finally { setBusy(false); }
   };
 
-  const updateItem = <T extends { id: string }>(key: 'skills' | 'projects' | 'experience' | 'certificates' | 'achievements', id: string, patch: Partial<T>) => {
-    setDraft((current) => ({ ...current, [key]: (current[key] as T[]).map((item) => item.id === id ? { ...item, ...patch } : item) }));
+  const updateItem = <T extends { id: string }>(
+    key: 'skills' | 'projects' | 'experience' | 'certificates' | 'achievements',
+    id: string,
+    patch: Partial<T>
+  ) => {
+    setDraft((current) => {
+      // Each key points to a different item type; the caller supplies that type as T.
+      const items = current[key] as unknown as T[];
+      const updatedItems = items.map((item) =>
+        item.id === id ? { ...item, ...patch } : item
+      );
+
+      return {
+        ...current,
+        [key]: updatedItems,
+      };
+    });
   };
   const removeItem = (key: 'skills' | 'projects' | 'experience' | 'certificates' | 'achievements', id: string) => {
     setDraft((current) => ({ ...current, [key]: current[key].filter((item) => item.id !== id) }));
@@ -165,7 +228,7 @@ export default function Admin({ data, onSaved, loading }: { data: PortfolioData;
           const items: Skill[] = rows.map((row) => ({ id: newId(), name: row.name ?? row.skill ?? '', category: row.category ?? 'Other' })).filter((item) => item.name);
           setPendingImport({ ...draft, skills: [...draft.skills, ...items] });
         } else if (importType === 'projects') {
-          const items: Project[] = rows.map((row) => ({ id: newId(), title: row.title ?? '', summary: row.summary ?? row.description ?? '', description: row.description ?? '', tech: (row.tech ?? row.technologies ?? '').split(/[;|]/).map((x) => x.trim()).filter(Boolean), githubUrl: row.github_url ?? row.github ?? '', liveUrl: row.live_url ?? row.demo ?? '', imageUrl: '', status: 'Completed', featured: false })).filter((item) => item.title);
+          const items: Project[] = rows.map((row) => ({ id: newId(), title: row.title ?? '', summary: row.summary ?? row.description ?? '', description: row.description ?? '', tech: (row.tech ?? row.technologies ?? '').split(/[;|]/).map((x) => x.trim()).filter(Boolean), githubUrl: row.github_url ?? row.github ?? '', liveUrl: row.live_url ?? row.demo ?? '', imageUrl: '', status: 'Completed' as Project['status'], featured: false })).filter((item) => item.title);
           setPendingImport({ ...draft, projects: [...draft.projects, ...items] });
         } else if (importType === 'certificates') {
           const items: Certificate[] = rows.map((row) => ({ id: newId(), title: row.title ?? row.name ?? '', issuer: row.issuer ?? row.organization ?? '', issueDate: row.issue_date ?? row.date ?? '', credentialUrl: row.credential_url ?? row.url ?? '', fileUrl: '' })).filter((item) => item.title);
